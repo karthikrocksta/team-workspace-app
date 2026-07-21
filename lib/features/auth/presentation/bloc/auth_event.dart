@@ -35,3 +35,12 @@ class AuthLoginRequested extends AuthEvent {
 class AuthLogoutRequested extends AuthEvent {
   const AuthLogoutRequested();
 }
+
+/// Dispatched after the user acknowledges the "Account created" confirmation
+/// dialog, moving them from [AuthSignUpSuccess] into the app proper
+/// ([Authenticated]). Keeping this as a separate step (rather than going
+/// straight to Authenticated on sign-up) lets the UI show an explicit
+/// confirmation before the dashboard appears.
+class AuthSignUpConfirmed extends AuthEvent {
+  const AuthSignUpConfirmed();
+}

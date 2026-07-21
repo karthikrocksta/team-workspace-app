@@ -6,11 +6,11 @@ Firebase Authentication and a paginated public REST API.
 
 The assessment explicitly deprioritizes UI polish in favor of **Clean Architecture, Bloc, Dependency
 Injection, API integration/pagination, and error handling** — this README explains how each of those
-requirements was addressed.
+requirements was addressed, as required by the deliverables list.
 
 ---
 
-## 1. Setup Instructions
+## Setup Instructions
 
 ### Prerequisites
 - Flutter (latest stable channel) — `flutter --version`
@@ -50,36 +50,36 @@ flutter test
 
 ---
 
-## 2. Architecture Overview
+## Architecture Overview
 
 The project follows **Clean Architecture** with a **feature-first** folder structure:
 
 ```
 lib/
 ├── core/                     # Cross-cutting concerns shared by all features
-│   ├── di/                   # GetIt service locator (injection.dart)
-│   ├── error/                 # Failure (domain) / Exception (data) types
-│   ├── network/               # Dio client, connectivity abstraction
-│   ├── usecase/                # Base UseCase<Type, Params> contract
-│   ├── constants/              # API endpoints, Hive box/key names
-│   └── utils/                  # Logger, form validators
+│   ├── di/                    # GetIt service locator (injection.dart)
+│   ├── error/                  # Failure (domain) / Exception (data) types
+│   ├── network/                # Dio client, connectivity abstraction
+│   ├── usecase/                 # Base UseCase<SuccessType, Params> contract
+│   ├── constants/                # API endpoints, Hive box/key names
+│   └── utils/                    # Logger, form validators
 │
 ├── features/
 │   ├── auth/
-│   │   ├── domain/            # UserEntity, AuthRepository (abstract), use cases
-│   │   ├── data/               # UserModel, FirebaseAuthDataSource, Hive session cache,
-│   │   │                       # AuthRepositoryImpl
-│   │   └── presentation/       # AuthBloc, Login/SignUp pages, shared widgets
+│   │   ├── domain/             # UserEntity, AuthRepository (abstract), use cases
+│   │   ├── data/                # UserModel, FirebaseAuthDataSource, Hive session cache,
+│   │   │                        # AuthRepositoryImpl
+│   │   └── presentation/        # AuthBloc, Login/SignUp pages, shared widgets
 │   │
 │   └── tasks/
-│       ├── domain/             # TaskEntity, TaskPage, TaskFilter, TaskRepository (abstract),
-│       │                       # GetTasks/GetTaskById/CreateTask/UpdateTask use cases
-│       ├── data/                # TaskModel, Dio remote data source, Hive local data source,
-│       │                        # TaskRepositoryImpl (merges remote + cache + offline queue)
-│       └── presentation/        # 3 Blocs (list/detail/form), Dashboard/Detail/Create-Edit pages
+│       ├── domain/              # TaskEntity, TaskPage, TaskFilter, TaskRepository (abstract),
+│       │                        # GetTasks/GetTaskById/CreateTask/UpdateTask use cases
+│       ├── data/                 # TaskModel, Dio remote data source, Hive local data source,
+│       │                         # TaskRepositoryImpl (merges remote + cache + offline queue)
+│       └── presentation/          # 3 Blocs (list/detail/form), Dashboard/Detail/Create-Edit pages
 │
-├── app.dart                    # MaterialApp + auth-gated routing (AuthBloc-driven)
-└── main.dart                   # Bootstraps Firebase, Hive, DI, connectivity-based sync
+├── app.dart                     # MaterialApp + auth-gated routing (AuthBloc-driven)
+└── main.dart                    # Bootstraps Firebase, Hive, DI, connectivity-based sync
 ```
 
 **Dependency rule:** `presentation → domain ← data`. The `domain` layer (entities, repository
@@ -97,10 +97,13 @@ Three Blocs power the Tasks feature, kept intentionally separate since each has 
 - **`TaskFormBloc`** — shared by both the Create and Edit screens (`isEditing` flag decides whether it
   calls `CreateTaskUseCase` or `UpdateTaskUseCase`).
 
-`AuthBloc` owns the whole app's auth state machine (`AuthInitial → AuthLoading → Authenticated |
-Unauthenticated`), and `app.dart`'s `_AuthGate` widget switches between the Login flow and the Dashboard
-purely by listening to it — including automatically resuming a session on cold start via
-`AuthCheckRequested`.
+`AuthBloc` owns the whole app's auth state machine:
+`AuthInitial → AuthLoading → Authenticated | Unauthenticated | AuthFailureState`, with one extra branch
+for sign-up: `AuthLoading → AuthSignUpSuccess → (user confirms) → Authenticated`. Gating sign-up behind
+an explicit `AuthSignUpSuccess` state (rather than jumping straight to `Authenticated`) is what powers
+the **sign-up confirmation dialog** — see "Sign-Up Confirmation" below.
+`app.dart`'s `_AuthGate` widget switches between the Login flow and the Dashboard purely by listening to
+`AuthBloc`, including automatically resuming a session on cold start via `AuthCheckRequested`.
 
 ### Dependency Injection — GetIt
 `core/di/injection.dart` wires every layer (`initDependencies()`, called once in `main()` before
@@ -117,13 +120,24 @@ navigating back and forth, e.g. Create Task after Create Task).
 - Firebase error codes (`email-already-in-use`, `wrong-password`, `weak-password`, etc.) are mapped to
   plain-English messages in `FirebaseAuthDataSourceImpl._mapFirebaseError`.
 
----
+### Sign-Up Confirmation
+After `SignUpUseCase` succeeds, `AuthBloc` emits `AuthSignUpSuccess(user)` instead of `Authenticated`.
+`SignUpPage` listens for that state and shows a non-dismissible confirmation dialog ("Account Created —
+your account for `<email>` has been created successfully"). Tapping **Continue**:
+1. dismisses the dialog,
+2. dispatches `AuthSignUpConfirmed`, which moves the bloc from `AuthSignUpSuccess` → `Authenticated`,
+3. pops the `SignUpPage` route, revealing `_AuthGate` underneath — which, now that the bloc is
+   `Authenticated`, renders the `DashboardPage`.
 
-## 3. Feature-to-Requirement Mapping
+This keeps the confirmation as an explicit, testable state transition (see
+`test/features/auth/auth_bloc_test.dart`) rather than a one-off `showDialog` bolted onto the success
+callback.
+
+### Feature-to-Requirement Mapping
 
 | Requirement | Where it lives |
 |---|---|
-| Firebase email/password auth, loading/error states, session persistence | `features/auth/*`, `AuthBloc`, `AuthLocalDataSource` (Hive cache mirrors Firebase's own session restore) |
+| Firebase email/password auth, loading/error states, session persistence, sign-up confirmation | `features/auth/*`, `AuthBloc`, `AuthLocalDataSource` (Hive cache mirrors Firebase's own session restore) |
 | Paginated dashboard, infinite scroll, pull-to-refresh, loading/empty/error + retry | `TaskListBloc` + `DashboardPage` (scroll-listener triggers `TaskListNextPageRequested`) |
 | Task details, mark complete/reopen, instant UI reflection | `TaskDetailBloc`, `TaskDetailPage` (pops the updated task back to the dashboard, which upserts it locally) |
 | Create Task, validation, success/error handling, appears without restart | `TaskFormBloc` + `CreateEditTaskPage`; Dashboard listens for the popped task and calls `TaskListLocalTaskUpserted` |
@@ -134,9 +148,18 @@ navigating back and forth, e.g. Create Task after Create Task).
 | **Bonus:** unit tests | `test/features/auth/auth_bloc_test.dart`, `test/features/tasks/task_list_bloc_test.dart` (bloc_test + mocktail) |
 | **Bonus:** logging | `core/utils/app_logger.dart` (centralizes `dart:developer` logging; swappable for Crashlytics/Sentry) |
 
+### API Used
+The dashboard is backed by the public **[dummyjson.com](https://dummyjson.com/docs/todos)** `/todos`
+endpoint (`GET /todos?skip=&limit=`), which supports real skip/limit pagination and a realistic
+success/error/timeout surface via Dio. It only returns `id`, `todo`, `completed`, and `userId`, so
+priority/due date/assignee are derived deterministically from each task's id (see `TaskModel.fromRemoteJson`)
+so the same task looks identical across refreshes. `POST /todos/add` / `PUT /todos/{id}` are real,
+working endpoints but don't persist server-side — `TaskRepositoryImpl` treats a successful response as
+an acknowledgement and keeps the richer object in the local Hive cache as the source of truth.
+
 ---
 
-## 4. Packages Used
+## Packages Used
 
 | Package | Purpose |
 |---|---|
@@ -154,27 +177,7 @@ navigating back and forth, e.g. Create Task after Create Task).
 
 ---
 
-## 5. API Used
-
-The dashboard is backed by the public **[dummyjson.com](https://dummyjson.com/docs/todos)** `/todos`
-endpoint (`GET /todos?skip=&limit=`), which supports real skip/limit pagination and a realistic
-success/error/timeout surface via Dio.
-
-`dummyjson` only returns `id`, `todo`, `completed`, and `userId` — it doesn't model priority, due dates,
-or assignees. Per the assessment's note that *"mock data is acceptable"* for the assigned user, those
-extra fields (**priority, due date, assignee**) are derived **deterministically from each task's id** in
-`TaskModel.fromRemoteJson`, so the same task always looks identical across refreshes/pages instead of
-randomizing on every load.
-
-`POST /todos/add` and `PUT /todos/{id}` are real, working endpoints on dummyjson (they validate/echo the
-request) but the service doesn't actually persist changes server-side. `TaskRepositoryImpl` therefore
-treats a successful response as an **acknowledgement** and keeps the richer task object (with our
-generated id/fields) in the local Hive cache as the source of truth — which is what makes "new task
-appears on the dashboard without restarting the app" work reliably.
-
----
-
-## 6. Assumptions Made
+## Assumptions Made
 
 1. **Backend**: No company-specific backend was provided, so a public REST API (dummyjson) was used, as
    explicitly permitted by the assessment ("REST API (preferred) or local JSON"). The repository
@@ -190,14 +193,39 @@ appears on the dashboard without restarting the app" work reliably.
 5. **Offline behavior**: When there's no connectivity, the dashboard shows the last cached page(s) plus
    any locally created/edited tasks, with pagination disabled (`hasReachedMax = true`) until back
    online — since dummyjson has no true offline copy of "later" pages to fall back to.
-6. **Firebase project**: Since this is a public repository, no real Firebase project credentials are
+6. **Sign-up confirmation**: Since the assessment doesn't require email verification, "confirmation on
+   sign up" was interpreted as an explicit in-app confirmation step (dialog) after the account is
+   created, rather than a verification email — the user is only taken into the app once they
+   acknowledge it.
+7. **Firebase project**: Since this is a public repository, no real Firebase project credentials are
    committed. `flutterfire configure` must be run against your own Firebase project before the app can
    authenticate (see Setup Instructions).
 
----
-
-## 7. What's Intentionally Out of Scope
-
+### What's Intentionally Out of Scope
 Per the assessment's own guidance to prioritize architecture/state/code quality over visual design, the
 UI uses stock Material 3 widgets with minimal custom theming. Dark mode, CI/CD, and flavors were left
 out to keep the review focused on the mandatory technical requirements above.
+
+---
+
+## Screenshots / Screen Recording (Optional)
+
+Not included in this submission — the app should be run locally (see Setup Instructions) to generate
+these, since a live Firebase project and device/emulator are needed. Suggested captures, once running:
+
+| Screen | What to show |
+|---|---|
+| Login | Empty-state validation error, then a successful login |
+| Sign Up | The confirmation dialog after a successful sign-up |
+| Dashboard | Infinite scroll loading a new page, plus pull-to-refresh |
+| Search & Filter | Search text + a status/priority filter applied together |
+| Task Detail | Marking a task complete and reopening it |
+| Create/Edit Task | Validation error, then a successful save reflected on the dashboard immediately |
+| Offline mode | Creating a task with Wi-Fi off, then it syncing once reconnected |
+
+A `screenshots/` folder (with its own placeholder README) is included in this repo — drop images or a
+short `.mp4`/`.gif` there and reference them here, e.g.:
+
+```markdown
+![Dashboard with pagination](screenshots/dashboard_pagination.png)
+```

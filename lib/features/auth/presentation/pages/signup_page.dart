@@ -36,6 +36,34 @@ class _SignUpPageState extends State<SignUpPage> {
     }
   }
 
+  Future<void> _showSignUpConfirmation(String email) async {
+    final authBloc = context.read<AuthBloc>();
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogContext) {
+        return AlertDialog(
+          icon: const Icon(Icons.check_circle, color: Colors.green, size: 48),
+          title: const Text('Account Created'),
+          content: Text('Your account for $email has been created successfully.'),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop(); // dismiss the dialog
+                  authBloc.add(const AuthSignUpConfirmed()); // -> Authenticated
+                  Navigator.of(context).pop(); // pop SignUpPage, revealing the dashboard
+                },
+                child: const Text('Continue'),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -47,6 +75,8 @@ class _SignUpPageState extends State<SignUpPage> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(state.message), backgroundColor: Colors.red),
               );
+            } else if (state is AuthSignUpSuccess) {
+              _showSignUpConfirmation(state.user.email);
             }
           },
           child: Center(

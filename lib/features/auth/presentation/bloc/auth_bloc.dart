@@ -26,6 +26,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<AuthSignUpRequested>(_onSignUpRequested);
     on<AuthLoginRequested>(_onLoginRequested);
     on<AuthLogoutRequested>(_onLogoutRequested);
+    on<AuthSignUpConfirmed>(_onSignUpConfirmed);
   }
 
   Future<void> _onAuthCheckRequested(AuthCheckRequested event, Emitter<AuthState> emit) async {
@@ -42,8 +43,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     final result = await signUpUseCase(SignUpParams(email: event.email, password: event.password));
     result.fold(
       (failure) => emit(AuthFailureState(failure.message)),
-      (user) => emit(Authenticated(user)),
+      // Gate on a confirmation step rather than going straight to
+      // Authenticated - the SignUpPage shows a dialog and dispatches
+      // AuthSignUpConfirmed once the user acknowledges it.
+      (user) => emit(AuthSignUpSuccess(user)),
     );
+  }
+
+  void _onSignUpConfirmed(AuthSignUpConfirmed event, Emitter<AuthState> emit) {
+    final current = state;
+    if (current is AuthSignUpSuccess) {
+      emit(Authenticated(current.user));
+    }
   }
 
   Future<void> _onLoginRequested(AuthLoginRequested event, Emitter<AuthState> emit) async {

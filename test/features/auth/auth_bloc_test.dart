@@ -92,6 +92,51 @@ void main() {
     );
   });
 
+  group('AuthSignUpRequested', () {
+    blocTest<AuthBloc, AuthState>(
+      'emits [AuthLoading, AuthSignUpSuccess] on successful sign up (does NOT '
+      'go straight to Authenticated - confirmation is required first)',
+      setUp: () {
+        when(() => signUpUseCase(any())).thenAnswer((_) async => const Right(tUser));
+      },
+      build: buildBloc,
+      act: (bloc) => bloc.add(const AuthSignUpRequested(email: 'karthik@example.com', password: 'secret1')),
+      expect: () => [const AuthLoading(), const AuthSignUpSuccess(tUser)],
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'emits [AuthLoading, AuthFailureState] when the email is already in use',
+      setUp: () {
+        when(() => signUpUseCase(any()))
+            .thenAnswer((_) async => const Left(AuthFailure('An account already exists for that email.')));
+      },
+      build: buildBloc,
+      act: (bloc) => bloc.add(const AuthSignUpRequested(email: 'karthik@example.com', password: 'secret1')),
+      expect: () => [const AuthLoading(), const AuthFailureState('An account already exists for that email.')],
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'moves from AuthSignUpSuccess to Authenticated once AuthSignUpConfirmed is dispatched',
+      setUp: () {
+        when(() => signUpUseCase(any())).thenAnswer((_) async => const Right(tUser));
+      },
+      build: buildBloc,
+      act: (bloc) async {
+        bloc.add(const AuthSignUpRequested(email: 'karthik@example.com', password: 'secret1'));
+        await Future.delayed(const Duration(milliseconds: 10));
+        bloc.add(const AuthSignUpConfirmed());
+      },
+      expect: () => [const AuthLoading(), const AuthSignUpSuccess(tUser), const Authenticated(tUser)],
+    );
+
+    blocTest<AuthBloc, AuthState>(
+      'ignores AuthSignUpConfirmed if there is no pending AuthSignUpSuccess state',
+      build: buildBloc,
+      act: (bloc) => bloc.add(const AuthSignUpConfirmed()),
+      expect: () => <AuthState>[],
+    );
+  });
+
   group('AuthLogoutRequested', () {
     blocTest<AuthBloc, AuthState>(
       'emits [AuthLoading, Unauthenticated] on logout',
