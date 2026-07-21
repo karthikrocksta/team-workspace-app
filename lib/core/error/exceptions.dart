@@ -1,5 +1,5 @@
-/// Exceptions are thrown by data sources (remote/local) and are caught by
-/// repository implementations, which convert them into [Failure]s.
+// Exceptions are thrown by data sources (remote/local) and are caught by
+// repository implementations, which convert them into Failures.
 
 class ServerException implements Exception {
   final String message;

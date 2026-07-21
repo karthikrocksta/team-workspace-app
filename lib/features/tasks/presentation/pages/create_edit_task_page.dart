@@ -120,7 +120,7 @@ class _CreateEditTaskViewState extends State<_CreateEditTaskView> {
                   ),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<TaskPriority>(
-                    value: _priority,
+                    initialValue: _priority,
                     decoration: const InputDecoration(labelText: 'Priority', border: OutlineInputBorder()),
                     items: TaskPriority.values
                         .map((p) => DropdownMenuItem(value: p, child: Text(p.label)))
@@ -130,7 +130,7 @@ class _CreateEditTaskViewState extends State<_CreateEditTaskView> {
                   const SizedBox(height: 16),
                   if (_isEditing)
                     DropdownButtonFormField<TaskStatus>(
-                      value: _status,
+                      initialValue: _status,
                       decoration: const InputDecoration(labelText: 'Status', border: OutlineInputBorder()),
                       items: TaskStatus.values
                           .map((s) => DropdownMenuItem(value: s, child: Text(s.label)))

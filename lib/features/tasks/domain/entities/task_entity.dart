@@ -5,29 +5,19 @@ enum TaskPriority { low, medium, high }
 enum TaskStatus { pending, inProgress, completed }
 
 extension TaskPriorityX on TaskPriority {
-  String get label {
-    switch (this) {
-      case TaskPriority.low:
-        return 'Low';
-      case TaskPriority.medium:
-        return 'Medium';
-      case TaskPriority.high:
-        return 'High';
-    }
-  }
+  String get label => switch (this) {
+        TaskPriority.low => 'Low',
+        TaskPriority.medium => 'Medium',
+        TaskPriority.high => 'High',
+      };
 }
 
 extension TaskStatusX on TaskStatus {
-  String get label {
-    switch (this) {
-      case TaskStatus.pending:
-        return 'Pending';
-      case TaskStatus.inProgress:
-        return 'In Progress';
-      case TaskStatus.completed:
-        return 'Completed';
-    }
-  }
+  String get label => switch (this) {
+        TaskStatus.pending => 'Pending',
+        TaskStatus.inProgress => 'In Progress',
+        TaskStatus.completed => 'Completed',
+      };
 }
 
 class TaskEntity extends Equatable {
