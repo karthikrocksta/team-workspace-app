@@ -23,7 +23,7 @@ requirements was addressed, as required by the deliverables list.
 # 1. Get packages
 flutter pub get
 
-# 2. Scaffold native platform folders (android/, ios/) — not committed to this repo
+# 2. Scaffold native platform folders (android/, ios/)
 flutter create .
 
 # 3. Configure Firebase for this app
@@ -207,26 +207,4 @@ UI uses stock Material 3 widgets with minimal custom theming. Dark mode, CI/CD, 
 out to keep the review focused on the mandatory technical requirements above.
 
 ---
-
-## Screenshots / Screen Recording (Optional)
-
-Not included in this submission — the app should be run locally (see Setup Instructions) to generate
-these, since a live Firebase project and device/emulator are needed. Suggested captures, once running:
-
-| Screen | What to show |
-|---|---|
-| Login | Empty-state validation error, then a successful login |
-| Sign Up | The confirmation dialog after a successful sign-up |
-| Dashboard | Infinite scroll loading a new page, plus pull-to-refresh |
-| Search & Filter | Search text + a status/priority filter applied together |
-| Task Detail | Marking a task complete and reopening it |
-| Create/Edit Task | Validation error, then a successful save reflected on the dashboard immediately |
-| Offline mode | Creating a task with Wi-Fi off, then it syncing once reconnected |
-
-A `screenshots/` folder (with its own placeholder README) is included in this repo — drop images or a
-short `.mp4`/`.gif` there and reference them here, e.g.:
-
-```markdown
-![Dashboard with pagination](screenshots/dashboard_pagination.png)
-```
 # team-workspace-app
