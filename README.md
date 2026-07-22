@@ -206,5 +206,3 @@ Per the assessment's own guidance to prioritize architecture/state/code quality 
 UI uses stock Material 3 widgets with minimal custom theming. Dark mode, CI/CD, and flavors were left
 out to keep the review focused on the mandatory technical requirements above.
 
----
-# team-workspace-app
